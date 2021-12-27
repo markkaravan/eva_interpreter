@@ -1,11 +1,21 @@
 const assert = require('assert');
+const Environment = require('./environment.js');
 
 /**
 *     Eva interpreter
 */
 
 class Eva {
-  eval(exp) {
+  /**
+  *     Creates an Eva instance with the global environment
+  */
+  constructor(global = new Environment()) {
+    this.global = global;
+  }
+
+  eval(exp, env = this.global) {
+    // -------------------------------------
+    // Self-evaluating expressions:
     if (isNumber(exp)) {
       return exp;
     }
@@ -14,11 +24,32 @@ class Eva {
       return exp.slice(1, -1);
     }
 
+    // -------------------------------------
+    // Math operations:
     if (exp[0] === '+') {
       return this.eval(exp[1]) + this.eval(exp[2]);
     }
 
-    throw 'Unimplemented';
+    if (exp[0] === '*') {
+      return this.eval(exp[1]) * this.eval(exp[2]);
+    }
+
+    // -------------------------------------
+    // Variable declaration:
+    if (exp[0] === 'var') {
+      const [_, name, value] = exp;
+      return env.define(name, this.eval(value));
+    }
+
+    // -------------------------------------
+    // Variable access:
+    if (isVariableName(exp)) {
+      return env.lookup(exp);
+    }
+
+
+
+    throw `Unimplemented: ${JSON.stringify(exp)}`;
   }
 }
 
@@ -30,14 +61,37 @@ function isString(exp) {
   return typeof exp === 'string' && exp[0] === '"' && exp.slice(-1) === '"' ;
 }
 
+function isVariableName(exp) {
+  return typeof exp === 'string' && /^[a-zA-Z][a-zA-Z0-9_]*$/.test(exp) ;
+}
+
 // -------------------------------------
 //    Tests:
 
-const eva = new Eva();
+const eva = new Eva(new Environment({
+  null: null,
+  true: true,
+  false: false,
+  VERSION: '0.1',
+}));
 
 assert.strictEqual(eva.eval(1), 1);
 assert.strictEqual(eva.eval('"hello"'), 'hello'); // Uses double quotes for strings
+
+// Math:
 assert.strictEqual(eva.eval(['+', 1, 5]), 6);
 assert.strictEqual(eva.eval(['+', 1, ['+', 2, 3]]), 6);
+assert.strictEqual(eva.eval(['*', 2, 6]), 12);
+assert.strictEqual(eva.eval(['+', ['*', 1, 2], ['*', 3, 4]]), 14);
+
+// Variables
+assert.strictEqual(eva.eval(['var', 'x', 10]), 10);
+assert.strictEqual(eva.eval('x'), 10);
+assert.strictEqual(eva.eval(['var', 'y', 100]), 100);
+assert.strictEqual(eva.eval('y'), 100);
+assert.strictEqual(eva.eval('VERSION'), '0.1');
+assert.strictEqual(eva.eval(['var', 'isUser', 'true']), true);
+assert.strictEqual(eva.eval(['var', 'z', ['*', 2, 3]]), 6);
+assert.strictEqual(eva.eval('z'), 6);
 
 console.log('All assertions passed!');
