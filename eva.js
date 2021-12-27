@@ -35,6 +35,32 @@ class Eva {
     }
 
     // -------------------------------------
+    // Comparison operations:
+    if (exp[0] === '>') {
+      return this.eval(exp[1], env) > this.eval(exp[2], env);
+    }
+
+    if (exp[0] === '>=') {
+      return this.eval(exp[1], env) >= this.eval(exp[2], env);
+    }
+
+    if (exp[0] === '<') {
+      return this.eval(exp[1], env) < this.eval(exp[2], env);
+    }
+
+    if (exp[0] === '<=') {
+      return this.eval(exp[1], env) <= this.eval(exp[2], env);
+    }
+
+    if (exp[0] === '=') {
+      return this.eval(exp[1], env) === this.eval(exp[2], env);
+    }
+
+    if (exp[0] === '!=') {
+      return this.eval(exp[1], env) != this.eval(exp[2], env);
+    }
+
+    // -------------------------------------
     // Variable declaration:
     if (exp[0] === 'var') {
       const [_, name, value] = exp;
@@ -52,6 +78,27 @@ class Eva {
     // Variable access:
     if (isVariableName(exp)) {
       return env.lookup(exp);
+    }
+
+    // -------------------------------------
+    // if expression:
+    if (exp[0] === 'if') {
+      const [_, condition, consequent, alternative] = exp;
+      if (this.eval(condition, env)) {
+        return this.eval(consequent, env);
+      }
+      return this.eval(alternative, env);
+    }
+
+    // -------------------------------------
+    // while expression:
+    if (exp[0] === 'while') {
+      const [_, condition, body] = exp;
+      let result;
+      while (this.eval(condition, env)) {
+        result = this.eval(body, env);
+      }
+      return result;
     }
 
     // -------------------------------------
@@ -91,75 +138,5 @@ function isVariableName(exp) {
   return typeof exp === 'string' && /^[a-zA-Z][a-zA-Z0-9_]*$/.test(exp) ;
 }
 
-// -------------------------------------
-//    Tests:
 
-const eva = new Eva(new Environment({
-  null: null,
-  true: true,
-  false: false,
-  VERSION: '0.1',
-}));
-
-assert.strictEqual(eva.eval(1), 1);
-assert.strictEqual(eva.eval('"hello"'), 'hello'); // Uses double quotes for strings
-
-// Math:
-assert.strictEqual(eva.eval(['+', 1, 5]), 6);
-assert.strictEqual(eva.eval(['+', 1, ['+', 2, 3]]), 6);
-assert.strictEqual(eva.eval(['*', 2, 6]), 12);
-assert.strictEqual(eva.eval(['+', ['*', 1, 2], ['*', 3, 4]]), 14);
-
-// Variables
-assert.strictEqual(eva.eval(['var', 'x', 10]), 10);
-assert.strictEqual(eva.eval('x'), 10);
-assert.strictEqual(eva.eval(['var', 'y', 100]), 100);
-assert.strictEqual(eva.eval('y'), 100);
-assert.strictEqual(eva.eval('VERSION'), '0.1');
-assert.strictEqual(eva.eval(['var', 'isUser', 'true']), true);
-assert.strictEqual(eva.eval(['var', 'z', ['*', 2, 3]]), 6);
-assert.strictEqual(eva.eval('z'), 6);
-
-// Blocks
-assert.strictEqual(eva.eval(
-  ['begin',
-    ['var', 'x', 10],
-    ['var', 'y', 20],
-    ['+', ['*', 'x', 'y'], 30]
-  ]),
-230);
-
-assert.strictEqual(eva.eval(
-  ['begin',
-    ['var', 'x', 10],
-    ['begin',
-      ['var', 'x', 20],
-      'x'
-    ],
-    'x'
-  ]),
-10);
-
-assert.strictEqual(eva.eval(
-  ['begin',
-    ['var', 'value', 10],
-    ['var', 'result',
-      ['begin',
-      ['var', 'x', ['+', 'value', 10]],
-      'x'
-    ]],
-    'result'
-  ]),
-20);
-
-assert.strictEqual(eva.eval(
-  ['begin',
-    ['var', 'data', 10],
-    ['begin',
-      ['set', 'data', 100],
-    ],
-    'data'
-  ]),
-100);
-
-console.log('All assertions passed!');
+module.exports = Eva;
