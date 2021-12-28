@@ -6,9 +6,9 @@ Evaluates Eva programming language
 ## Execution
 ### from command line:
 ```
-TODO
+./bin/eva -e '(var x 10) (print x)'
 ```
 ### from file:
 ```
-TODO
+./bin/eva -f files/hello.eva
 ```
