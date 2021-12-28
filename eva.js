@@ -15,6 +15,16 @@ class Eva {
     this._transformer = new Transformer();
   }
 
+  /**
+  *   Implicit "begin" wrapper
+  */
+  evalGlobal(expressions) {
+    return this._evalBlock(
+      ['block', expressions],
+      this.global,
+    );
+  }
+
   eval(exp, env = this.global) {
     // -------------------------------------
     // Self-evaluating expressions:
@@ -145,8 +155,14 @@ class Eva {
     }
 
     // -------------------------------------
-    // Class Instantiation (new <Class> <Arguments> ... )
+    // Super expressions: (super <ClassName>)
+    if (exp[0] === 'super') {
+      const [_, className] = exp;
+      return this.eval(className, env).parent;
+    }
 
+    // -------------------------------------
+    // Class Instantiation (new <Class> <Arguments> ... )
     if (exp[0] === 'new') {
       const classEnv = this.eval(exp[1], env);
 
