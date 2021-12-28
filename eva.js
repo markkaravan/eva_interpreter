@@ -1,5 +1,6 @@
 const assert = require('assert');
 const Environment = require('./environment.js');
+const Transformer = require('./transform/Transformer.js');
 
 /**
 *     Eva interpreter
@@ -11,6 +12,7 @@ class Eva {
   */
   constructor(global = GlobalEnvironment) {
     this.global = global;
+    this._transformer = new Transformer();
   }
 
   eval(exp, env = this.global) {
@@ -105,12 +107,22 @@ class Eva {
     // Syntactic sugar for: (var square (lambda (x) (* x x)))
 
     if (exp[0] === 'def') {
-      const [_, name, params, body] = exp;
-
-      // JIT-transpile to variable declaration
-      const varExp = ['var', name, ['lambda', params, body]];
+      const varExp = this._transformer
+        .transformDefToLambda(exp);
 
       return this.eval(varExp, env);
+    }
+
+    // -------------------------------------
+    // Switch-expression: (switch (cond1, block1) ... )
+    //
+    // Syntactic sugar for: nestted ifs
+
+    if (exp[0] === 'switch') {
+      const ifExp = this._transformer
+        .transformSwitchToIf(exp);
+
+      return this.eval(ifExp, env);
     }
 
     // -------------------------------------
