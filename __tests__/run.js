@@ -12,6 +12,7 @@ const tests = [
   require('./user-defined-function-test.js'),
   require('./lambda-function-test.js'),
   require('./switch-test.js'),
+  require('./class-test.js'),
 ];
 
 const eva = new Eva();
