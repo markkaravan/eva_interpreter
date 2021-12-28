@@ -9,55 +9,52 @@ class Eva {
   /**
   *     Creates an Eva instance with the global environment
   */
-  constructor(global = new Environment()) {
+  constructor(global = GlobalEnvironment) {
     this.global = global;
   }
 
   eval(exp, env = this.global) {
     // -------------------------------------
     // Self-evaluating expressions:
-    if (isNumber(exp, env)) {
+    if (this._isNumber(exp, env)) {
       return exp;
     }
 
-    if (isString(exp, env)) {
+    if (this._isString(exp, env)) {
       return exp.slice(1, -1);
     }
 
     // -------------------------------------
-    // Math operations:
-    if (exp[0] === '+') {
-      return this.eval(exp[1], env) + this.eval(exp[2], env);
-    }
-
-    if (exp[0] === '*') {
-      return this.eval(exp[1], env) * this.eval(exp[2], env);
-    }
+    // Comparison operations:
+    // if (exp[0] === '>') {
+    //   return this.eval(exp[1], env) > this.eval(exp[2], env);
+    // }
+    //
+    // if (exp[0] === '>=') {
+    //   return this.eval(exp[1], env) >= this.eval(exp[2], env);
+    // }
+    //
+    // if (exp[0] === '<') {
+    //   return this.eval(exp[1], env) < this.eval(exp[2], env);
+    // }
+    //
+    // if (exp[0] === '<=') {
+    //   return this.eval(exp[1], env) <= this.eval(exp[2], env);
+    // }
+    //
+    // if (exp[0] === '=') {
+    //   return this.eval(exp[1], env) === this.eval(exp[2], env);
+    // }
+    //
+    // if (exp[0] === '<>') {
+    //   return this.eval(exp[1], env) != this.eval(exp[2], env);
+    // }
 
     // -------------------------------------
-    // Comparison operations:
-    if (exp[0] === '>') {
-      return this.eval(exp[1], env) > this.eval(exp[2], env);
-    }
-
-    if (exp[0] === '>=') {
-      return this.eval(exp[1], env) >= this.eval(exp[2], env);
-    }
-
-    if (exp[0] === '<') {
-      return this.eval(exp[1], env) < this.eval(exp[2], env);
-    }
-
-    if (exp[0] === '<=') {
-      return this.eval(exp[1], env) <= this.eval(exp[2], env);
-    }
-
-    if (exp[0] === '=') {
-      return this.eval(exp[1], env) === this.eval(exp[2], env);
-    }
-
-    if (exp[0] === '!=') {
-      return this.eval(exp[1], env) != this.eval(exp[2], env);
+    // Blocks:
+    if (exp[0] === 'begin') {
+      const blockEnv = new Environment({}, env);
+      return this._evalBlock(exp, blockEnv);
     }
 
     // -------------------------------------
@@ -76,7 +73,7 @@ class Eva {
 
     // -------------------------------------
     // Variable access:
-    if (isVariableName(exp)) {
+    if (this._isVariableName(exp)) {
       return env.lookup(exp);
     }
 
@@ -102,13 +99,28 @@ class Eva {
     }
 
     // -------------------------------------
-    // Blocks:
-    if (exp[0] === 'begin') {
-      const blockEnv = new Environment({}, env);
-      return this._evalBlock(exp, blockEnv);
+    // Function calls:
+    //
+    // (print "Hello world")
+    // (+ x 5)
+    // (> foo bar)
+
+    if (Array.isArray(exp)) {
+
+      const fn = this.eval(exp[0], env);
+
+      const args = exp
+        .slice(1)
+        .map(arg => this.eval(arg, env));
+
+      // 1. Native function:
+      if (typeof fn === 'function') {
+        return fn(...args);
+      }
+
+      // 2. User-defined function:
+      // TODO
     }
-
-
 
     throw `Unimplemented: ${JSON.stringify(exp)}`;
   }
@@ -124,19 +136,80 @@ class Eva {
 
     return result;
   }
+
+  _isNumber(exp) {
+    return typeof exp === 'number';
+  }
+
+  _isString(exp) {
+    return typeof exp === 'string' && exp[0] === '"' && exp.slice(-1) === '"' ;
+  }
+
+  _isVariableName(exp) {
+    let regexp = /^[+\-*/<>=a-zA-Z0-9_]*$/;
+    return typeof exp === 'string' && regexp.test(exp) ;
+  }
 }
 
-function isNumber(exp) {
-  return typeof exp === 'number';
-}
+const GlobalEnvironment = new Environment({
+  null: null,
 
-function isString(exp) {
-  return typeof exp === 'string' && exp[0] === '"' && exp.slice(-1) === '"' ;
-}
+  true: true,
+  false: false,
 
-function isVariableName(exp) {
-  return typeof exp === 'string' && /^[a-zA-Z][a-zA-Z0-9_]*$/.test(exp) ;
-}
+  VERSION: '0.1',
+
+  // Math
+  '+'(op1, op2) {
+    return op1 + op2;
+  },
+
+  '*'(op1, op2) {
+    return op1 * op2;
+  },
+
+  '-'(op1, op2 = null) {
+    if (op2 == null) {
+      return -op1;
+    }
+    return op1 - op2;
+  },
+
+  '/'(op1, op2) {
+    return op1 / op2;
+  },
+
+  // Comparison
+  '>'(op1, op2) {
+    return op1 > op2;
+  },
+
+  '<'(op1, op2) {
+    return op1 < op2;
+  },
+
+  '>='(op1, op2) {
+    return op1 >= op2;
+  },
+
+  '<='(op1, op2) {
+    return op1 <= op2;
+  },
+
+  '='(op1, op2) {
+    return op1 === op2;
+  },
+
+  '<>'(op1, op2) {
+    return op1 != op2;
+  },
+
+  print(...args) {
+    console.log(...args);
+  },
+});
+
+
 
 
 module.exports = Eva;
