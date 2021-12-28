@@ -1,5 +1,6 @@
 const assert = require('assert');
 const Environment = require('./environment.js');
+const Transformer = require('./transform/Transformer.js');
 
 /**
 *     Eva interpreter
@@ -11,6 +12,7 @@ class Eva {
   */
   constructor(global = GlobalEnvironment) {
     this.global = global;
+    this._transformer = new Transformer();
   }
 
   eval(exp, env = this.global) {
@@ -23,32 +25,6 @@ class Eva {
     if (this._isString(exp, env)) {
       return exp.slice(1, -1);
     }
-
-    // -------------------------------------
-    // Comparison operations:
-    // if (exp[0] === '>') {
-    //   return this.eval(exp[1], env) > this.eval(exp[2], env);
-    // }
-    //
-    // if (exp[0] === '>=') {
-    //   return this.eval(exp[1], env) >= this.eval(exp[2], env);
-    // }
-    //
-    // if (exp[0] === '<') {
-    //   return this.eval(exp[1], env) < this.eval(exp[2], env);
-    // }
-    //
-    // if (exp[0] === '<=') {
-    //   return this.eval(exp[1], env) <= this.eval(exp[2], env);
-    // }
-    //
-    // if (exp[0] === '=') {
-    //   return this.eval(exp[1], env) === this.eval(exp[2], env);
-    // }
-    //
-    // if (exp[0] === '<>') {
-    //   return this.eval(exp[1], env) != this.eval(exp[2], env);
-    // }
 
     // -------------------------------------
     // Blocks:
@@ -88,6 +64,18 @@ class Eva {
     }
 
     // -------------------------------------
+    // Switch-expression: (switch (cond1, block1) ... )
+    //
+    // Syntactic sugar for: nested ifs
+
+    if (exp[0] === 'switch') {
+      const ifExp = this._transformer
+        .transformSwitchToIf(exp);
+
+      return this.eval(ifExp, env);
+    }
+
+    // -------------------------------------
     // while expression:
     if (exp[0] === 'while') {
       const [_, condition, body] = exp;
@@ -105,10 +93,8 @@ class Eva {
     // Syntactic sugar for: (var square (lambda (x) (* x x)))
 
     if (exp[0] === 'def') {
-      const [_, name, params, body] = exp;
-
-      // JIT-transpile to variable declaration
-      const varExp = ['var', name, ['lambda', params, body]];
+      const varExp = this._transformer
+        .transformDefToLambda(exp);
 
       return this.eval(varExp, env);
     }
